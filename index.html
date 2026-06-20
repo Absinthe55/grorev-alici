@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Titan Makina - Hidrolik Görev Sistemi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=3.0">
+</head>
+
+<body>
+    <div class="background">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- Pull to Refresh Indicator -->
+    <div class="ptr-spinner" id="ptr-spinner">
+        <span class="material-icons-round spinning">refresh</span>
+    </div>
+
+    <!-- Radio panel (Global) -->
+    <div class="header-radio-panel" id="header-radio-panel">
+        <select id="radio-station" class="radio-select">
+            <option value="https://listen.powerapp.com.tr/powerturk/mpeg/icecast.audio">🎧 PowerTürk</option>
+            <option value="https://listen.powerapp.com.tr/powerpop/mpeg/icecast.audio">🎧 Power Pop</option>
+            <option value="https://radios.trt.net.tr/trtfm">🎧 TRT FM</option>
+            <option value="https://listen.powerapp.com.tr/powerapparabesk/mpeg/icecast.audio">🎧 Power Arabesk
+            </option>
+            <option value="https://yayin.kralfm.com.tr/kralfm/mp3/icecast.audio">🎧 Kral FM</option>
+        </select>
+        <div class="radio-inline-controls">
+            <button class="btn yt-btn play" id="yt-play-btn" onclick="window.playRadio()">
+                <span class="material-icons-round" id="yt-play-icon">play_arrow</span> Dinle
+            </button>
+            <button class="btn yt-btn stop" onclick="window.stopRadio()">
+                <span class="material-icons-round">stop</span> Kapat
+            </button>
+            <div class="radio-volume">
+                <span class="material-icons-round">volume_up</span>
+                <input type="range" id="yt-volume" min="0" max="100" value="70"
+                    oninput="window.changeRadioVolume(this.value)">
+            </div>
+        </div>
+        <div id="yt-status-text" class="yt-status">Radyo kapalı.</div>
+        <audio id="radio-audio-player" preload="none"></audio>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Image Modal -->
+    <div class="image-modal" id="image-modal">
+        <button class="image-modal-close" onclick="closeImageModal()">
+            <span class="material-icons-round">close</span>
+        </button>
+        <img id="image-modal-img" src="" alt="Büyük Resim">
+    </div>
+
+    <!-- ===================== GİRİŞ EKRANI ===================== -->
+    <main id="login-screen" class="screen active">
+        <div class="glass-card login-card">
+            <div class="logo-container">
+                <div class="logo-icon-wrap">
+                    <img src="logo.png" alt="Titan Makina Logo" class="custom-logo">
+                </div>
+                <h1>TİTAN MAKİNA</h1>
+                <p>Hidrolik Birimi Görev Yönetim Sistemi</p>
+            </div>
+
+            <p class="form-label">Hesabınızı seçin</p>
+            <div class="login-options" id="login-user-list">
+                <div class="login-card-user" style="justify-content:center;color:var(--clr-text-muted)">
+                    <span class="material-icons-round spinning">sync</span> Yükleniyor...
+                </div>
+            </div>
+            <div id="debug-info"
+                style="font-size:0.75rem;color:var(--clr-danger);text-align:center;margin-bottom:1rem;word-wrap:break-word;">
+            </div>
+
+            <div class="hint">Hesabınızı seçin ve şifrenizi girin.</div>
+        </div>
+    </main>
+
+    <!-- ===================== AMİR PANELİ ===================== -->
+    <main id="supervisor-screen" class="screen">
+        <header class="glass-header">
+            <div class="header-info">
+                <h2>Amir Paneli</h2>
+                <p>Hoş geldin, <span class="current-user-name"></span></p>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" onclick="window.toggleNotifPanel('sup')" title="Bildirimler" id="sup-notif-btn"
+                    style="position:relative">
+                    <span class="material-icons-round">notifications</span>
+                    <span class="notif-badge" id="sup-notif-badge" style="display:none">0</span>
+                </button>
+                <button class="icon-btn logout-btn" title="Çıkış Yap">
+                    <span class="material-icons-round">logout</span>
+                </button>
+            </div>
+            <!-- Bildirim Paneli -->
+            <div class="notif-panel" id="sup-notif-panel" style="display:none">
+                <div class="notif-panel-header">
+                    <span style="font-weight:600">Bildirimler</span>
+                    <span class="material-icons-round" style="cursor:pointer;font-size:1.1rem"
+                        onclick="window.clearNotifications('sup')">done_all</span>
+                </div>
+                <div class="notif-list" id="sup-notif-list">
+                    <div class="empty-state" style="padding:1rem;font-size:.85rem">Bildirim yok</div>
+                </div>
+            </div>
+        </header>
+        <!-- Görev İstatistikleri -->
+        <div class="stats-bar">
+            <div class="stat-chip pending"><span class="material-icons-round">schedule</span> <span
+                    id="sup-pending-count">0</span></div>
+            <div class="stat-chip progress"><span class="material-icons-round">engineering</span> <span
+                    id="sup-progress-count">0</span></div>
+            <div class="stat-chip completed"><span class="material-icons-round">check_circle</span> <span
+                    id="sup-completed-count">0</span></div>
+        </div>
+
+        <div class="content-area" id="sup-content">
+            <!-- GÖREVLER SEKMESİ -->
+            <div id="sup-tab-tasks" class="tab-content active">
+                <!-- Yeni Görev Formu -->
+                <section class="add-task-section glass-panel">
+                    <h3><span class="material-icons-round">add_task</span> Yeni Görev Ver</h3>
+                    <form id="add-task-form">
+                        <div class="input-group dark">
+                            <span class="material-icons-round">assignment</span>
+                            <input type="text" id="task-title" placeholder="Görev başlığı / tanımı" required>
+                        </div>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">engineering</span>
+                            <select id="worker-select" required>
+                                <option value="" disabled selected>Usta Seçin</option>
+                            </select>
+                        </div>
+                        <div class="priority-selector">
+                            <span>Öncelik:</span>
+                            <label><input type="radio" name="priority" value="low"> Düşük</label>
+                            <label><input type="radio" name="priority" value="medium" checked> Normal</label>
+                            <label><input type="radio" name="priority" value="high"> Acil</label>
+                        </div>
+                        <div class="file-upload-group">
+                            <input type="file" id="task-image" accept="image/*" class="file-input">
+                            <label for="task-image" class="file-label">
+                                <span class="material-icons-round">add_a_photo</span>
+                                <span id="file-name-display">Fotoğraf Ekle (Opsiyonel)</span>
+                            </label>
+                            <img id="image-preview" class="image-preview" style="display:none">
+                        </div>
+                        <button type="submit" class="btn primary-btn" id="submit-task-btn">
+                            <span class="material-icons-round">send</span> Görevi Ata
+                        </button>
+                    </form>
+                </section>
+
+                <!-- Görev Filtreleme -->
+                <div class="task-filter-tabs">
+                    <button class="filter-tab active" onclick="filterTasks('all', this)">Tümü</button>
+                    <button class="filter-tab" onclick="filterTasks('pending', this)">Bekliyor</button>
+                    <button class="filter-tab" onclick="filterTasks('progress', this)">Devam Ediyor</button>
+                    <button class="filter-tab" onclick="filterTasks('completed', this)">Tamamlandı</button>
+                </div>
+                <div class="task-container" id="supervisor-tasks"></div>
+            </div>
+
+            <!-- TAKVİM SEKMESİ -->
+            <div id="sup-tab-calendar" class="tab-content">
+                <section class="glass-panel">
+                    <h3><span class="material-icons-round">event</span> İzin Talepleri</h3>
+                    <div class="task-container" id="supervisor-leaves"></div>
+                </section>
+                <section class="glass-panel" style="margin-top:1rem">
+                    <div class="calendar-header-wrap">
+                        <h3><span class="material-icons-round">calendar_month</span> İzin Takvimi</h3>
+                        <div class="calendar-controls">
+                            <button class="icon-btn" onclick="window.changeCalendarMonth(-1)"><span
+                                    class="material-icons-round">chevron_left</span></button>
+                            <span id="sup-calendar-month-year" style="font-weight:600; font-size:1rem;"></span>
+                            <button class="icon-btn" onclick="window.changeCalendarMonth(1)"><span
+                                    class="material-icons-round">chevron_right</span></button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="leave-calendar-view"></div>
+                </section>
+            </div>
+
+            <!-- MESAİ SEKMESİ -->
+            <div id="sup-tab-overtime" class="tab-content">
+                <section class="glass-panel">
+                    <h3><span class="material-icons-round">more_time</span> Mesai Talepleri</h3>
+                    <div class="task-container" id="supervisor-overtimes"></div>
+                </section>
+            </div>
+
+            <!-- EKSİK MALZEME SEKMESİ -->
+            <div id="sup-tab-materials" class="tab-content">
+                <section class="glass-panel">
+                    <h3><span class="material-icons-round">inventory_2</span> Eksik Malzeme Talepleri</h3>
+                    <div class="task-container" id="supervisor-materials"></div>
+                </section>
+            </div>
+
+            <!-- DÖKÜMANLAR SEKMESİ -->
+            <div id="sup-tab-docs" class="tab-content">
+                <section class="glass-panel">
+                    <h3><span class="material-icons-round">folder</span> Döküman Yönetimi</h3>
+                    <form id="docs-form" style="margin-bottom:1rem">
+                        <div class="input-group dark">
+                            <span class="material-icons-round">title</span>
+                            <input type="text" id="doc-title" placeholder="Döküman Adı/Başlığı" required>
+                        </div>
+                        <div class="file-upload-group">
+                            <input type="file" id="doc-file" accept=".pdf,.png,.jpg,.jpeg" class="file-input" required>
+                            <label for="doc-file" class="file-label" style="justify-content:center">
+                                <span class="material-icons-round">upload_file</span>
+                                <span id="doc-file-name-display">Dosya Seç (Sadece PDF, PNG, JPG)</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn primary-btn" id="submit-doc-btn">
+                            <span class="material-icons-round">cloud_upload</span> Dökümanı Yükle
+                        </button>
+                    </form>
+                    <div class="task-container" id="supervisor-docs"></div>
+                </section>
+            </div>
+
+            <!-- PROFİL / EKİP YÖNETİMİ SEKMESİ -->
+            <div id="sup-tab-profile" class="tab-content">
+                <section class="user-management-section glass-panel">
+                    <h3><span class="material-icons-round">manage_accounts</span> Ekip Yönetimi</h3>
+                    <p class="section-desc">Sisteme giriş yapabilen personelleri ve şifrelerini yönetin.</p>
+                    <div class="task-container" id="user-management-list" style="margin-bottom:1rem"></div>
+                    <button class="btn secondary-btn" onclick="window.promptAddUser()">
+                        <span class="material-icons-round">person_add</span> Yeni Kullanıcı Ekle
+                    </button>
+                </section>
+            </div>
+        </div>
+
+        <nav class="bottom-nav" id="sup-nav">
+            <a class="nav-item active" onclick="window.switchTab('supervisor','tasks',this)">
+                <span class="material-icons-round">assignment</span><span>Görevler</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('supervisor','calendar',this)">
+                <span class="material-icons-round">event</span><span>İzinler</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('supervisor','overtime',this)">
+                <span class="material-icons-round">more_time</span><span>Mesai</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('supervisor','materials',this)">
+                <span class="material-icons-round">inventory_2</span><span>Malzeme</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('supervisor','docs',this)">
+                <span class="material-icons-round">folder</span><span>Dökümanlar</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('supervisor','profile',this)">
+                <span class="material-icons-round">people</span><span>Ekip</span>
+            </a>
+        </nav>
+    </main>
+
+    <!-- ===================== USTA PANELİ ===================== -->
+    <main id="worker-screen" class="screen">
+        <header class="glass-header worker-header">
+            <div class="header-info">
+                <h2>Usta Paneli</h2>
+                <p>Kolay gelsin, <span class="current-user-name"></span></p>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" onclick="window.toggleNotifPanel('wrk')" title="Bildirimler" id="wrk-notif-btn"
+                    style="position:relative">
+                    <span class="material-icons-round">notifications</span>
+                    <span class="notif-badge" id="wrk-notif-badge" style="display:none">0</span>
+                </button>
+                <button class="icon-btn logout-btn" title="Çıkış Yap">
+                    <span class="material-icons-round">logout</span>
+                </button>
+            </div>
+            <!-- Bildirim Paneli -->
+            <div class="notif-panel" id="wrk-notif-panel" style="display:none">
+                <div class="notif-panel-header">
+                    <span style="font-weight:600">Bildirimler</span>
+                    <span class="material-icons-round" style="cursor:pointer;font-size:1.1rem"
+                        onclick="window.clearNotifications('wrk')">done_all</span>
+                </div>
+                <div class="notif-list" id="wrk-notif-list">
+                    <div class="empty-state" style="padding:1rem;font-size:.85rem">Bildirim yok</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="content-area" id="wrk-content">
+            <!-- GÖREVLER SEKMESİ -->
+            <div id="wrk-tab-tasks" class="tab-content active">
+                <div class="task-filter-tabs">
+                    <button class="filter-tab active" onclick="filterWorkerTasks('all', this)">Tümü</button>
+                    <button class="filter-tab" onclick="filterWorkerTasks('pending', this)">Bekliyor</button>
+                    <button class="filter-tab" onclick="filterWorkerTasks('progress', this)">Devam Ediyor</button>
+                    <button class="filter-tab" onclick="filterWorkerTasks('completed', this)">Tamamlandı</button>
+                </div>
+                <div class="task-container" id="worker-tasks"></div>
+            </div>
+
+            <!-- İZİN AL SEKMESİ -->
+            <div id="wrk-tab-calendar" class="tab-content">
+                <section class="leave-request-section glass-panel">
+                    <h3><span class="material-icons-round">flight_takeoff</span> Yıllık İzin Talep Et</h3>
+                    <form id="leave-form">
+                        <label class="date-label">Başlangıç Tarihi</label>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">calendar_today</span>
+                            <input type="date" id="leave-start" required>
+                        </div>
+                        <label class="date-label">Bitiş Tarihi</label>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">event_busy</span>
+                            <input type="date" id="leave-end" required>
+                        </div>
+                        <button type="submit" class="btn secondary-btn" id="submit-leave-btn">
+                            <span class="material-icons-round">send</span> İzin Talebi Gönder
+                        </button>
+                    </form>
+                </section>
+                <section class="glass-panel" style="margin-top:1rem">
+                    <h3><span class="material-icons-round">list_alt</span> İzinlerim / Taleplerim</h3>
+                    <div class="task-container" id="worker-leaves"></div>
+                </section>
+                <section class="glass-panel" style="margin-top:1rem">
+                    <div class="calendar-header-wrap">
+                        <h3><span class="material-icons-round">calendar_month</span> İzin Takvimi</h3>
+                        <div class="calendar-controls">
+                            <button class="icon-btn" onclick="window.changeCalendarMonth(-1)"><span
+                                    class="material-icons-round">chevron_left</span></button>
+                            <span id="wrk-calendar-month-year" style="font-weight:600; font-size:1rem;"></span>
+                            <button class="icon-btn" onclick="window.changeCalendarMonth(1)"><span
+                                    class="material-icons-round">chevron_right</span></button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="wrk-leave-calendar-view"></div>
+                </section>
+            </div>
+
+            <!-- MESAİ SEKMESİ -->
+            <div id="wrk-tab-overtime" class="tab-content">
+                <section class="leave-request-section glass-panel">
+                    <h3><span class="material-icons-round">more_time</span> Mesai Talep Et</h3>
+                    <form id="overtime-form">
+                        <label class="date-label">Mesai Tarihi</label>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">calendar_today</span>
+                            <input type="date" id="overtime-date" required>
+                        </div>
+                        <label class="date-label">Açıklama / Nedeni (İsteğe Bağlı)</label>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">subject</span>
+                            <input type="text" id="overtime-reason" placeholder="Neden mesaiye kalmak istiyorsunuz?">
+                        </div>
+                        <label class="date-label">Mesai Durumu</label>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">rule</span>
+                            <select id="overtime-decision" required>
+                                <option value="will_stay">Kalacağım</option>
+                                <option value="will_not_stay">Kalmayacağım</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn secondary-btn" id="submit-overtime-btn">
+                            <span class="material-icons-round">send</span> Mesai Talebi Gönder
+                        </button>
+                    </form>
+                </section>
+                <section class="glass-panel" style="margin-top:1rem">
+                    <h3><span class="material-icons-round">list_alt</span> Mesai Talepleri</h3>
+                    <div class="task-container" id="worker-overtimes"></div>
+                </section>
+            </div>
+
+            <!-- EKSİK MALZEME SEKMESİ -->
+            <div id="wrk-tab-materials" class="tab-content">
+                <section class="glass-panel">
+                    <h3><span class="material-icons-round">inventory_2</span> Eksik Malzeme Bildir</h3>
+                    <form id="material-form">
+                        <div class="input-group dark">
+                            <span class="material-icons-round">search</span>
+                            <input type="text" id="material-name" placeholder="Eksik malzeme adı" required>
+                        </div>
+                        <div class="input-group dark">
+                            <span class="material-icons-round">notes</span>
+                            <input type="text" id="material-desc" placeholder="Açıklama (opsiyonel)">
+                        </div>
+                        <div class="file-upload-group">
+                            <input type="file" id="material-image" accept="image/*" class="file-input">
+                            <label for="material-image" class="file-label">
+                                <span class="material-icons-round">add_a_photo</span>
+                                <span id="mat-file-name-display">Fotoğraf Ekle (Opsiyonel)</span>
+                            </label>
+                            <img id="mat-image-preview" class="image-preview" style="display:none">
+                        </div>
+                        <button type="submit" class="btn primary-btn" id="submit-material-btn">
+                            <span class="material-icons-round">send</span> Talep Gönder
+                        </button>
+                    </form>
+                </section>
+                <section class="glass-panel" style="margin-top:1rem">
+                    <h3><span class="material-icons-round">list_alt</span> Taleplerim</h3>
+                    <div class="task-container" id="worker-materials"></div>
+                </section>
+            </div>
+
+            <!-- DÖKÜMANLAR SEKMESİ -->
+            <div id="wrk-tab-docs" class="tab-content">
+                <section class="glass-panel">
+                    <h3><span class="material-icons-round">folder</span> Ortak Dökümanlar</h3>
+                    <div class="task-container" id="worker-docs"></div>
+                </section>
+            </div>
+
+        </div>
+
+        <nav class="bottom-nav" id="wrk-nav">
+            <a class="nav-item active" onclick="window.switchTab('worker','tasks',this)">
+                <span class="material-icons-round">assignment</span><span>Görevlerim</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('worker','calendar',this)">
+                <span class="material-icons-round">event</span><span>İzin Al</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('worker','overtime',this)">
+                <span class="material-icons-round">more_time</span><span>Mesai</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('worker','materials',this)">
+                <span class="material-icons-round">inventory_2</span><span>Malzeme</span>
+            </a>
+            <a class="nav-item" onclick="window.switchTab('worker','docs',this)">
+                <span class="material-icons-round">folder</span><span>Dökümanlar</span>
+            </a>
+
+        </nav>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        // Set workerSrc for pdf.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+    <script src="app.js?v=3.0"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, orderBy, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCw5SWA0IphZg1DcvpwuybWgaPabs3ewfc",
+            authDomain: "titan-makina-gorev.firebaseapp.com",
+            projectId: "titan-makina-gorev",
+            storageBucket: "titan-makina-gorev.firebasestorage.app",
+            messagingSenderId: "862140750370",
+            appId: "1:862140750370:web:56dc5ec496b91e95ab887b",
+            measurementId: "G-V94D98HRK2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Expose Firebase API to app.js
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.onSnapshot = onSnapshot;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.getDocs = getDocs;
+        window.deleteDoc = deleteDoc;
+        window.storage = storage;
+        window.ref = ref;
+        window.uploadBytes = uploadBytes;
+        window.getDownloadURL = getDownloadURL;
+
+        // Firebase is ready — now bootstrap the app
+        window.firebaseReady = true;
+        if (typeof window.appInit === 'function') window.appInit();
+    </script>
+</body>
+
+</html>
